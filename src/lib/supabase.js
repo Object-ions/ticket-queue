@@ -5,6 +5,14 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+// Exported for the storage setup check, which probes a plain HTTP URL rather
+// than going through the client library.
+export const SUPABASE_URL = supabaseUrl
+
+// The name of the Storage bucket that holds ticket screenshots. Defined once
+// here so a typo can't drift between the upload code and the setup check.
+export const SCREENSHOT_BUCKET = 'ticket-screenshots'
+
 // `hasSupabaseConfig` lets the UI show a friendly "not configured yet" message
 // instead of a cryptic crash while we're still in Phase 0/1 with placeholder values.
 export const hasSupabaseConfig =

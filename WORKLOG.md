@@ -15,6 +15,29 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-15] — Phase 1: Supabase backend
+**Did:**
+- Added `supabase/schema.sql` — the `tickets` table, RLS policies for select/insert/update, and the Storage policies for the `ticket-screenshots` bucket. Committed so the database is reproducible instead of living only in dashboard clicks.
+- Added `src/lib/setupCheck.js` — two checks that verify the dashboard work actually landed: the table exists and RLS hides rows from logged-out visitors, and the storage bucket exists and serves public reads.
+- Added `src/components/SetupCheck.jsx` + styles — a three-row pass/fail screen (env vars, database, storage).
+- Exported `SUPABASE_URL` and `SCREENSHOT_BUCKET` from `src/lib/supabase.js` so the bucket name is defined in exactly one place.
+- README now documents the Supabase setup steps.
+
+**Test:**
+1. Do the 👤 MANUAL steps (create project → run `supabase/schema.sql` → create the public `ticket-screenshots` bucket → paste URL + anon key into `.env`).
+2. Restart the dev server: `npm run dev`.
+3. All three rows on http://localhost:5173 should be green ✓, ending with "Backend is ready."
+4. Any red ✕ row states exactly what is missing.
+
+**Notes:**
+- **Deviation from PLAN.md:** the SQL uses `to authenticated ... using (true)` instead of `using (auth.role() = 'authenticated')`. `auth.role()` is deprecated in Supabase and errors on newer projects; `to authenticated` is the current supported form and does the same thing.
+- **Addition not in PLAN.md:** Storage policies. Marking a bucket "public" only makes reads public — uploads stay blocked by RLS on `storage.objects`. Without these policies the Phase 3 upload would fail with "new row violates row-level security policy".
+- Check #2 treats *zero readable rows while logged out* as the success case. An empty result is proof RLS is working, not proof the table is empty.
+- There is deliberately no DELETE policy — tickets cannot be deleted from the app.
+- Not verified end-to-end by me: the Supabase project does not exist yet, so checks 2 and 3 currently report "Skipped". They run for real once the manual steps are done.
+
+**Next:** Phase 2 — shared team login (needs 👤 MANUAL creation of one shared user in Supabase → Authentication → Users).
+
 ## [2026-08-15] — Phase 0: Repo + tooling
 **Did:**
 - Created the public GitHub repo `Object-ions/ticket-queue` with an SSH remote, and a `.gitignore` that blocks `.env`, `node_modules/`, `dist/`, `.DS_Store`, `.vercel`, logs and editor files.

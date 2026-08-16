@@ -69,3 +69,64 @@ h1 {
   font-size: 0.875rem;
   color: var(--text-muted);
 }
+
+/* --- Setup check list (Phase 1) --- */
+
+h2 {
+  font-size: 1.125rem;
+  margin: 0 0 0.75rem;
+}
+
+.check-list {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  display: grid;
+  gap: 0.625rem;
+}
+
+.check {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.875rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+}
+
+.check p {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* A fixed-width icon column keeps the text of every row left-aligned. */
+.check-icon {
+  flex: 0 0 1.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.check-pending {
+  border-left-color: var(--border);
+}
+.check-ok {
+  border-left-color: #10b981;
+}
+.check-ok .check-icon {
+  color: #10b981;
+}
+.check-warn {
+  border-left-color: #f59e0b;
+}
+.check-warn .check-icon {
+  color: #b45309;
+}
+.check-error {
+  border-left-color: #ef4444;
+}
+.check-error .check-icon {
+  color: #dc2626;
+}
