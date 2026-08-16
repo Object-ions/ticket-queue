@@ -1,0 +1,71 @@
+/* Single global stylesheet for the whole app (no UI framework, per CLAUDE.md).
+   Design tokens live here as CSS variables so later phases reuse them. */
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1c1e21;
+  --text-muted: #6b7280;
+  --border: #e3e5e8;
+  --accent: #2563eb;
+  --ok-bg: #ecfdf5;
+  --ok-text: #065f46;
+  --warn-bg: #fffbeb;
+  --warn-text: #92400e;
+  --radius: 8px;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 3rem 1.25rem;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+}
+
+.subtitle {
+  margin: 0 0 1.5rem;
+  color: var(--text-muted);
+}
+
+.status {
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 0.9375rem;
+}
+
+.status-ok {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+  border-color: #a7f3d0;
+}
+
+.status-warn {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-color: #fde68a;
+}
+
+.phase {
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
