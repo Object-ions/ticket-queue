@@ -73,13 +73,10 @@ create policy "authenticated can insert tickets"
   to authenticated
   with check (true);
 
--- Lets the admin move a ticket New -> In Progress -> Resolved (Phase 5).
+-- UPDATE (moving a ticket New -> In Progress -> Resolved) is granted in
+-- section 4 below, to admins only. The original version of this file granted it
+-- to every signed-in user; that policy is dropped there.
 drop policy if exists "authenticated can update tickets" on tickets;
-create policy "authenticated can update tickets"
-  on tickets for update
-  to authenticated
-  using (true)
-  with check (true);
 
 -- Note: there is deliberately NO delete policy. Nobody can delete a ticket
 -- from the app. Removing one is a manual action in the dashboard.
@@ -121,3 +118,63 @@ create policy "authenticated can update screenshots"
 -- The app never lists the bucket. It stores each file's public URL on the
 -- ticket row and reads it from there.
 drop policy if exists "anyone can read screenshots" on storage.objects;
+
+
+-- ============================================================
+-- 4. Admin role (added after Phase 5)
+-- ============================================================
+-- Everyone signs in with the same shared account, so the database cannot tell
+-- one rep from another. The one distinction we do need is admin vs rep: any
+-- signed-in person may READ every ticket, but only an admin may change a
+-- ticket's status.
+--
+-- That is done with a second account. The reps share one login; the admin has
+-- their own. This table lists which email addresses count as admins.
+--
+-- Why a table instead of hardcoding the email in the policy below: this repo is
+-- public. Keeping the address in a row means it is never committed, and adding
+-- or removing an admin later is an INSERT rather than a policy rewrite.
+create table if not exists admins (
+  email text primary key,
+  added_at timestamptz default now()
+);
+
+alter table admins enable row level security;
+
+-- Signed-in users can read this list. The app needs it to decide whether to
+-- show the status dropdown at all — showing a control that the database will
+-- reject is worse than not showing it.
+drop policy if exists "authenticated can read admins" on admins;
+create policy "authenticated can read admins"
+  on admins for select
+  to authenticated
+  using (true);
+
+-- No insert/update/delete policy: admins are added in the Supabase dashboard,
+-- never from the app. A rep cannot promote themselves.
+
+-- `auth.jwt() ->> 'email'` is the email on the caller's login token. The
+-- function is the single definition of "is this caller an admin", so the policy
+-- below and any future one cannot drift apart.
+create or replace function is_admin()
+  returns boolean
+  language sql
+  stable
+as $$
+  select exists (
+    select 1 from admins where email = auth.jwt() ->> 'email'
+  );
+$$;
+
+-- Replaces the Phase 1 policy that let ANY signed-in user change a status
+-- (dropped in section 2).
+drop policy if exists "admins can update tickets" on tickets;
+create policy "admins can update tickets"
+  on tickets for update
+  to authenticated
+  using (is_admin())
+  with check (is_admin());
+
+-- 👤 MANUAL, run once with your own address (not committed here, because this
+-- repo is public):
+--   insert into admins (email) values ('you@example.com');

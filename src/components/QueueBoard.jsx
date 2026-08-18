@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react'
 import { fetchTickets, updateTicketStatus } from '../lib/tickets'
 import { STATUSES } from '../lib/constants'
+import { useIsAdmin } from '../lib/useIsAdmin'
 import TicketCard from './TicketCard'
 
 // 'all' is a UI-only value; it is never stored on a ticket.
 const FILTERS = [{ value: 'all', label: 'All' }, ...STATUSES]
 
-export default function QueueBoard() {
+export default function QueueBoard({ email }) {
   const [tickets, setTickets] = useState([])
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   // Which ticket is mid-save, so only that card's dropdown is disabled.
   const [savingId, setSavingId] = useState(null)
+  const { isAdmin } = useIsAdmin(email)
 
   async function load() {
     setError('')
@@ -58,9 +60,12 @@ export default function QueueBoard() {
     <>
       <div className="board-head">
         <h2>Queue</h2>
-        <button type="button" className="tool" onClick={load}>
-          Refresh
-        </button>
+        <div className="board-actions">
+          {isAdmin && <span className="badge badge-admin">Admin</span>}
+          <button type="button" className="tool" onClick={load}>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="toolbar-group filters">
@@ -97,6 +102,7 @@ export default function QueueBoard() {
             <TicketCard
               key={ticket.id}
               ticket={ticket}
+              isAdmin={isAdmin}
               onStatusChange={handleStatusChange}
               busy={savingId === ticket.id}
             />

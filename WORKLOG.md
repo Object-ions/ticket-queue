@@ -15,6 +15,46 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-18] — Phase 5a: Compact board, visible priority, admin-only status changes
+**Asked for:** the board was too heavy to manage, priority wasn't visible, and only an admin should be able to change a ticket's status.
+
+**Did — the admin role (enforced in the database, not just hidden in the UI):**
+- `supabase/schema.sql` section 4 — a new `admins` table (one row per admin email), a read policy so signed-in users can check it, and an `is_admin()` function. The `tickets` UPDATE policy is replaced: it was `to authenticated using (true)`, it is now `using (is_admin())`.
+- No insert/update/delete policy on `admins` — admins are added in the dashboard only, so a rep cannot promote themselves.
+- The admin email is **not** committed. It goes in a row, which also means adding an admin later is an INSERT rather than a policy rewrite. This repo is public.
+- `src/lib/useIsAdmin.js` — looks the signed-in email up in `admins`. Admins get the status dropdown; everyone else gets a read-only status badge. This is presentation only; the RLS policy is what actually rejects a rep's write.
+
+**Did — the board:**
+- `TicketCard` is now a compact row: number, priority badge, title on one line, then submitter/category/date, then the description clamped to two lines. Thumbnail is 56×40 and opens full size in a new tab.
+- **Priority now shows on every ticket** — "Urgent" in red, "Normal" in quiet grey. A loud badge on all of them would stop urgent ones from standing out.
+- The list is one bordered block with hairline dividers instead of separate floating cards, so the queue reads as something to scan down.
+- Status colour moved to a 4px left edge: blue = new, amber = in progress, green = resolved.
+- Roughly four tickets now occupy the space that used to hold one and a half.
+
+**👤 MANUAL — required, in this order:**
+1. **Re-run `supabase/schema.sql`** (SQL Editor → New query → paste the whole file → Run). It is safe to re-run: tables use `create ... if not exists` and policies are dropped and recreated. No data is lost.
+2. **Make yourself the admin:** `insert into admins (email) values ('moshikolee@gmail.com');`
+3. **Create the new shared rep login:** Authentication → Users → Add user → Create new user, e.g. `team@yourdomain.com`, tick **Auto Confirm User**. That is the password you give the reps. You keep using your own account to triage.
+4. Still open from Phase 2: Authentication → Sign In / Providers → Email → turn **OFF** "Allow new users to sign up."
+
+**Test:**
+1. Sign in as yourself → Queue → an **ADMIN** badge appears next to Refresh, and each row has a status dropdown. Change one → it saves.
+2. Sign out, sign in as the new rep account → the same tickets are visible, but the status is a **read-only badge** with no dropdown.
+3. To prove it is the database enforcing it and not just the UI: as the rep, run this in the browser console — it should fail, not silently succeed.
+   ```js
+   const { error } = await window.supabase?.from('tickets').update({ status: 'resolved' }).eq('ticket_number', 1)
+   ```
+   (Or simply trust the policy: `using (is_admin())` rejects the write for any email not in `admins`.)
+
+**Notes:**
+- **Why a second account rather than a role flag on the shared one:** with one login the database genuinely cannot tell an admin from a rep — every request carries the same JWT. Two accounts give the JWT something to distinguish, which is what makes `is_admin()` possible at all.
+- Reps can read the `admins` table (the app needs it to decide what to render). It contains internal email addresses only.
+- The description is clamped with `-webkit-line-clamp`, so the full text is still in the DOM — Phase 6's detail view is where it gets read properly.
+- `min-width: 0` on `.ticket-main` is what lets a long title truncate; without it a flex child refuses to shrink below its content and stretches the row.
+
+**Next:** Phase 6 — ticket detail view, then Vercel + UptimeRobot.
+
+
 ## [2026-08-18] — Phase 5: Queue board
 **Did:**
 - `src/lib/constants.js` — added `STATUSES` (New → In Progress → Resolved) and `labelFor()`, which turns a stored value like `sms_delivery` into "SMS delivery".
