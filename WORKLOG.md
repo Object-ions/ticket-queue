@@ -15,6 +15,46 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-18] — Phase 4: Image annotation (Fabric.js)
+**Did:**
+- Installed `fabric` v7.4.0.
+- `src/lib/annotator.js` — the drawing geometry: `fitToWidth()` (screen size + export multiplier), `makeRect()`/`resizeRect()`, `makeArrow()` (Fabric has no arrow primitive, so it's a Line + rotated Triangle grouped together), and `canvasToPngFile()`.
+- `src/lib/useAnnotationCanvas.js` — the hook that owns the Fabric canvas: loads the screenshot as the background, wires the mouse handlers for box/arrow, sets up the pencil brush, and exposes tool/undo/clear.
+- `src/components/ScreenshotAnnotator.jsx` — the canvas + toolbar layout (31 lines; all the imperative work lives in the hook).
+- `src/components/AnnotatorToolbar.jsx` — Draw / Arrow / Box, plus Undo and Clear.
+- `src/components/ScreenshotPicker.jsx` — the static preview is replaced by the annotator, lazy-loaded.
+- `src/components/TicketForm.jsx` — on submit, uploads the flattened PNG from the canvas instead of the file the rep picked.
+- Toolbar and canvas styles appended to `src/index.css`.
+
+**Verified in the browser (canvas layer, no login needed):**
+- A 800×500 source shows at 560×350, and the exported PNG comes back **800×500** — full resolution, not the shrunken on-screen size.
+- 3,831 annotation pixels are baked into the exported PNG; the arrow head lands exactly on the line's end point in `#e11d48`.
+- The arrow is a single Fabric `group`, so Undo removes the shaft and the head together.
+- Clear removes the drawings but keeps the background screenshot.
+- Export is a real `File`, `image/png`, ready for Storage.
+- `npm run lint` and `npm run build` clean.
+
+**Test:**
+1. `npm run dev` → sign in.
+2. Attach a screenshot → toolbar + canvas appear.
+3. **Draw** — freehand scribble. **Arrow** — drag from one point to another; the head follows your direction. **Box** — drag a rectangle.
+4. **Undo** removes the last mark (one click removes a whole arrow). **Clear** removes all marks but keeps the screenshot.
+5. Submit → open the new row's `screenshot_url` → **your drawings are in the image**, at the screenshot's original resolution.
+6. Pick a different screenshot without reloading → a fresh canvas with no leftover drawings.
+
+**Notes:**
+- **The canvas is exported, not the original file.** The rep's file is never uploaded — `canvasToPngFile()` flattens the screenshot and the drawings into one PNG. If the canvas somehow failed to build, the form falls back to uploading the raw file, so a broken canvas costs the annotations, not the ticket.
+- **Resolution:** the canvas is displayed at 560 px wide to fit the form, but `toDataURL` is called with a multiplier that undoes that shrink. Without it the admin would receive a blurry 560 px image of a 1920 px screenshot.
+- **Fabric is lazy-loaded.** It is ~288 kB — bigger than the rest of the app combined. `React.lazy` keeps it out of the initial bundle, so signing in and filing a text-only ticket never downloads it. Main bundle stayed at 410 kB; Fabric is a separate chunk fetched when a screenshot is picked.
+- Fabric v6+ no longer creates `freeDrawingBrush` for you — it must be constructed manually or drawing mode silently does nothing.
+- Canvas selection is off. Shapes are drawn and left alone; without this a stray click picks one up and drags it.
+- The annotator is keyed on the file, and the cleanup calls `canvas.dispose()`. Both matter: without them, swapping screenshots stacks a dead canvas under the new one and keeps the old drawings.
+- `canvas.clear()` is deliberately not used — it would wipe the background screenshot along with the marks.
+- One fixed colour (`#e11d48`) and one stroke width. A colour picker is easy to add later; it wasn't in the plan and reps only need "point at the problem".
+
+**Next:** Phase 5 — the queue board: list all tickets, filter by status, move New → In Progress → Resolved.
+
+
 ## [2026-08-18] — Phase 3: Ticket submit form
 **Did:**
 - `src/lib/constants.js` — the category and priority option lists (short DB value + human label), plus the accepted image types and the 10 MB size cap. One source of truth so Phase 5's board can't drift from the form.

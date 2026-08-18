@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createTicket } from '../lib/tickets'
 import { CATEGORIES, PRIORITIES } from '../lib/constants'
 import ScreenshotPicker from './ScreenshotPicker'
@@ -17,6 +17,9 @@ export default function TicketForm() {
   const [category, setCategory] = useState('other')
   const [priority, setPriority] = useState('normal')
   const [file, setFile] = useState(null)
+  // Filled in by the annotator: an async function that flattens the drawing and
+  // the screenshot into one PNG. Null when no screenshot has been picked.
+  const exportRef = useRef(null)
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -29,13 +32,18 @@ export default function TicketForm() {
     setSubmitting(true)
 
     try {
+      // Upload the flattened PNG (screenshot + drawings) rather than the file
+      // the rep chose. Falling back to the raw file means a canvas that failed
+      // to build costs the annotations, not the whole ticket.
+      const upload = file && exportRef.current ? await exportRef.current() : file
+
       const ticketNumber = await createTicket({
         submitterName,
         title,
         description,
         category,
         priority,
-        file,
+        file: upload,
       })
 
       localStorage.setItem(NAME_KEY, submitterName.trim())
@@ -123,7 +131,12 @@ export default function TicketForm() {
           ))}
         </select>
 
-        <ScreenshotPicker file={file} onChange={setFile} disabled={submitting} />
+        <ScreenshotPicker
+          file={file}
+          onChange={setFile}
+          exportRef={exportRef}
+          disabled={submitting}
+        />
 
         {error && <p className="form-error">{error}</p>}
 
