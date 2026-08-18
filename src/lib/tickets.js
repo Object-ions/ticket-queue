@@ -87,3 +87,26 @@ export async function createTicket({
 
   return data.ticket_number
 }
+
+/**
+ * Every ticket, newest first.
+ *
+ * No `.eq('status', …)` here — the board filters in memory. With a handful of
+ * reps the whole table is small, and filtering locally means clicking between
+ * All / New / Resolved is instant instead of a round trip each time.
+ */
+export async function fetchTickets() {
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(`Could not load tickets: ${error.message}`)
+  return data
+}
+
+/** Move a ticket along: new -> in_progress -> resolved (or back). */
+export async function updateTicketStatus(id, status) {
+  const { error } = await supabase.from('tickets').update({ status }).eq('id', id)
+  if (error) throw new Error(`Could not update the ticket: ${error.message}`)
+}

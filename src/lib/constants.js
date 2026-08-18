@@ -15,6 +15,14 @@ export const CATEGORIES = [
   { value: 'other', label: 'Other' },
 ]
 
+// The lifecycle of a ticket, in order. The board's filter buttons and the
+// status dropdown on each card are both built from this list.
+export const STATUSES = [
+  { value: 'new', label: 'New' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'resolved', label: 'Resolved' },
+]
+
 export const PRIORITIES = [
   { value: 'normal', label: 'Normal' },
   { value: 'urgent', label: 'Urgent' },
@@ -27,3 +35,13 @@ export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'i
 // Supabase's free tier allows far more than this; the cap is here so a rep who
 // drags in a 40 MB photo gets an instant, clear error instead of a slow upload.
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
+
+/**
+ * Turn a stored value ('sms_delivery') into its label ('SMS delivery').
+ *
+ * Falls back to the raw value rather than showing nothing, so a row written
+ * before an option existed still reads sensibly on the board.
+ */
+export function labelFor(options, value) {
+  return options.find((option) => option.value === value)?.label ?? value
+}

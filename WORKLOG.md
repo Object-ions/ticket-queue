@@ -15,6 +15,38 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-18] — Phase 5: Queue board
+**Did:**
+- `src/lib/constants.js` — added `STATUSES` (New → In Progress → Resolved) and `labelFor()`, which turns a stored value like `sms_delivery` into "SMS delivery".
+- `src/lib/tickets.js` — added `fetchTickets()` (all tickets, newest first) and `updateTicketStatus(id, status)`.
+- `src/components/TicketCard.jsx` — one ticket: number, title, urgent badge, submitter + category + date, description, screenshot thumbnail that opens full size, and a status dropdown.
+- `src/components/QueueBoard.jsx` — the list, the All / New / In Progress / Resolved filter buttons with live counts, a Refresh button, and the status-saving logic.
+- `src/App.jsx` — two tabs, "Submit a ticket" and "Queue".
+- Board styles appended to `src/index.css`: a colour-coded left edge per status (blue = new, amber = in progress, green = resolved), and resolved tickets greyed back so open work stands out.
+
+**Verified:**
+- The board's exact query (`select=*&order=created_at.desc`) runs against the live database and returns `[]` while logged out — RLS still hiding rows. A deliberately wrong column name returns a `42703` error on the same request, which is what makes that check meaningful rather than a query that silently passes.
+- `npm run lint` and `npm run build` clean.
+- Not verified by me: the board rendering with real rows and a status change saving, both of which need the shared login.
+
+**Test:**
+1. `npm run dev` → sign in → click the **Queue** tab.
+2. Ticket #1 and #2 are listed, newest first, with their screenshots as thumbnails.
+3. Click a thumbnail → the full annotated image opens in a new tab.
+4. Change a ticket's status to **In Progress** → the left edge turns amber. Reload the page → the change stuck.
+5. Click the **New (n)** filter → only new tickets. The counts on each button update as you change statuses.
+6. Submit a new ticket on the other tab, then click **Queue** → it's there without needing a refresh.
+
+**Notes:**
+- **Filtering happens in the browser, not in SQL.** With ~5–15 reps the whole table is small, so all rows are fetched once and the filter buttons just narrow what's shown — instant, instead of a round trip per click. If this ever grows to thousands of tickets, move the filter into the query and add pagination.
+- **The status dropdown updates the screen before the save finishes**, then puts the old value back if the save fails. It feels instant, and the board never shows a status the database doesn't actually have.
+- **Anyone signed in can change any status.** That is a consequence of the shared login — the database genuinely cannot tell the admin from a rep. Reps are asked not to; the app can't enforce it.
+- Switching tabs unmounts the board, so returning to it refetches. Cheap here, and it means a ticket you just filed appears without a manual refresh.
+- Tickets still cannot be deleted from the app — there is no delete policy, by design.
+
+**Next:** Phase 6 — ticket detail view, then deploy to Vercel + the UptimeRobot ping.
+
+
 ## [2026-08-18] — Phase 4a: Fix — screenshot was cropped and misaligned on the canvas
 **Reported:** drawing worked and the ticket uploaded, but the screenshot and the canvas were different shapes and only part of the image showed.
 
