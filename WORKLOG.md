@@ -15,6 +15,38 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-18] — Phase 3: Ticket submit form
+**Did:**
+- `src/lib/constants.js` — the category and priority option lists (short DB value + human label), plus the accepted image types and the 10 MB size cap. One source of truth so Phase 5's board can't drift from the form.
+- `src/lib/tickets.js` — `validateImage()` and `createTicket()`. Uploads the screenshot to the `ticket-screenshots` bucket, then inserts the row with the returned public URL, and returns the new `ticket_number`.
+- `src/components/ScreenshotPicker.jsx` — file input, type/size validation, and a thumbnail preview. Deliberately its own file: Phase 4 swaps this preview for the Fabric.js drawing canvas.
+- `src/components/TicketForm.jsx` — Your name, Title, Description, Category, Priority, Screenshot. Shows "Ticket #N submitted" on success.
+- `src/App.jsx` — signed-in view now renders the form instead of the Phase 2 placeholder.
+- Form control styles (textarea, select, file input, image preview) appended to `src/index.css`.
+
+**Test:**
+1. `npm run dev` → sign in.
+2. Fill in the form, attach a screenshot, submit → green "Ticket #1 submitted".
+3. Supabase → Table Editor → `tickets` → the row is there, with your name, category, priority, `status = new`, and a `screenshot_url`.
+4. Open that `screenshot_url` in a new tab → the image loads.
+5. Supabase → Storage → `ticket-screenshots` → the file is in the bucket.
+6. Submit a second ticket → it is #2, and your name is still pre-filled.
+7. Try attaching a non-image (e.g. a PDF) → an inline error, and the file is not accepted.
+
+**Notes:**
+- **"Your name" is free text, not a dropdown.** PLAN.md allowed either. Free text means no hardcoded rep list to maintain as the team changes; the name is saved to `localStorage` so each rep types it once on their own machine.
+- **Upload happens before the insert, on purpose.** A ticket row must never point at a file that failed to upload. The trade-off: if the insert fails after a successful upload, an orphaned image is left in the bucket. That is the cheaper failure — a stray file costs a few KB, a broken image link costs the admin real time.
+- Uploaded files are renamed to a random UUID. Original filenames can contain spaces and slashes that break URLs, and can leak information (`client-complaint-acme-corp.png`).
+- `.insert()` returns nothing by default in Supabase, so the call chains `.select('ticket_number').single()` to get the database-generated number back for the success message.
+- The 10 MB cap and the image-type check are for a fast, clear error message only. They are browser-side and can be bypassed; the real limits live in Supabase Storage settings.
+- `status` is never set by the form — the column defaults to `'new'`.
+- Not verified end-to-end by me: submitting requires the shared login password, which I do not have. Lint and build are clean, and the Phase 1/2 checks (RLS, bucket, storage policies) already passed against the live project.
+
+**Still open from Phase 2 (👤 MANUAL):** public signups appear to still be enabled. Authentication → Sign In / Providers → Email → turn OFF **Allow new users to sign up**. Until then anyone holding the public anon key can create an account and read/write every ticket.
+
+**Next:** Phase 4 — Fabric.js annotation layer over the screenshot, flattened to a PNG on submit.
+
+
 ## [2026-08-17] — Phase 2: Shared team login
 **Did:**
 - `src/lib/useSession.js` — a hook that reads the stored session on load and subscribes to auth changes, so signing in/out re-renders the app automatically and a page refresh keeps you signed in.

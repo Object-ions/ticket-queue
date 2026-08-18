@@ -3,6 +3,7 @@ import { useSession } from './lib/useSession'
 import SetupCheck from './components/SetupCheck'
 import Login from './components/Login'
 import Header from './components/Header'
+import TicketForm from './components/TicketForm'
 
 /**
  * The auth gate. Nothing in this app renders until there is a valid session.
@@ -42,13 +43,7 @@ export default function App() {
     <>
       <Header email={session.user.email} />
       <main className="app">
-        <h2>Signed in</h2>
-        <div className="status status-ok">
-          Auth is working. Next: Phase 3 — the ticket submit form.
-        </div>
-        <p className="phase">
-          Reload the page — you should stay signed in.
-        </p>
+        <TicketForm />
       </main>
     </>
   )
