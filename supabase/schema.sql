@@ -178,3 +178,56 @@ create policy "admins can update tickets"
 -- 👤 MANUAL, run once with your own address (not committed here, because this
 -- repo is public):
 --   insert into admins (email) values ('you@example.com');
+
+
+-- ============================================================
+-- 5. Reps list and multiple screenshots (added after Phase 5)
+-- ============================================================
+
+-- The names that appear in the "Your name" dropdown on the submit form.
+--
+-- Shared login means the database cannot tell reps apart, so attribution comes
+-- from that field. As free text it drifted immediately ("Moses - test", "moses",
+-- "Moshe"), which makes the queue hard to scan and impossible to group by
+-- person. A fixed list fixes the spelling at the source.
+create table if not exists reps (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  -- Someone who leaves is deactivated rather than deleted, so their old
+  -- tickets still read correctly.
+  active boolean not null default true,
+  created_at timestamptz default now()
+);
+
+alter table reps enable row level security;
+
+drop policy if exists "authenticated can read reps" on reps;
+create policy "authenticated can read reps"
+  on reps for select
+  to authenticated
+  using (true);
+
+-- No write policies: the list is managed in the dashboard, like `admins`.
+
+-- 👤 MANUAL: add your reps, e.g.
+--   insert into reps (name) values ('Moses'), ('Dana'), ('Alex');
+
+
+-- A ticket can now carry several screenshots instead of one.
+--
+-- An array column rather than a separate `ticket_images` table: a ticket has at
+-- most a handful of images, they are never queried on their own, and an array
+-- needs no join, no second set of RLS policies, and no extra insert. If images
+-- ever need their own metadata (captions, ordering, who added them), that is
+-- the point to promote this to a real table.
+alter table tickets add column if not exists screenshot_urls text[] not null default '{}';
+
+-- Carry the existing single-image tickets over so nothing filed before this
+-- change loses its screenshot.
+update tickets
+  set screenshot_urls = array[screenshot_url]
+  where screenshot_url is not null
+    and cardinality(screenshot_urls) = 0;
+
+-- `screenshot_url` is kept for those old rows but is no longer written to.
+-- The app reads `screenshot_urls` only.

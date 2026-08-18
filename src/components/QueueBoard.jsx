@@ -3,6 +3,7 @@ import { fetchTickets, updateTicketStatus } from '../lib/tickets'
 import { STATUSES } from '../lib/constants'
 import { useIsAdmin } from '../lib/useIsAdmin'
 import TicketCard from './TicketCard'
+import TicketDetail from './TicketDetail'
 
 // 'all' is a UI-only value; it is never stored on a ticket.
 const FILTERS = [{ value: 'all', label: 'All' }, ...STATUSES]
@@ -15,6 +16,8 @@ export default function QueueBoard({ email }) {
   // Which ticket is mid-save, so only that card's dropdown is disabled.
   const [savingId, setSavingId] = useState(null)
   const { isAdmin } = useIsAdmin(email)
+  // The ticket being read in full, by id. null means show the list.
+  const [openId, setOpenId] = useState(null)
 
   async function load() {
     setError('')
@@ -55,6 +58,24 @@ export default function QueueBoard({ email }) {
 
   const visible =
     filter === 'all' ? tickets : tickets.filter((ticket) => ticket.status === filter)
+
+  // Looked up rather than stored, so a status change updates the open ticket too.
+  const openTicket = tickets.find((ticket) => ticket.id === openId)
+
+  if (openTicket) {
+    return (
+      <>
+        {error && <p className="form-error">{error}</p>}
+        <TicketDetail
+          ticket={openTicket}
+          isAdmin={isAdmin}
+          onStatusChange={handleStatusChange}
+          onBack={() => setOpenId(null)}
+          busy={savingId === openTicket.id}
+        />
+      </>
+    )
+  }
 
   return (
     <>
@@ -103,6 +124,7 @@ export default function QueueBoard({ email }) {
               key={ticket.id}
               ticket={ticket}
               isAdmin={isAdmin}
+              onOpen={setOpenId}
               onStatusChange={handleStatusChange}
               busy={savingId === ticket.id}
             />

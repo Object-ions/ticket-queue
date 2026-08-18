@@ -15,6 +15,53 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-18] — Phase 6: Rep list, ticket detail view, multiple screenshots
+**Asked for:** a proper rep list instead of free-text names, a ticket "card" showing the whole ticket, and more than one image per ticket.
+
+**Did — rep list:**
+- `supabase/schema.sql` section 5 — a `reps` table (name, active flag) readable by any signed-in user, writable only from the dashboard.
+- `fetchReps()` in `src/lib/tickets.js`; the "Your name" field is now a dropdown of active reps. **If the list is empty the field falls back to free text**, so the form keeps working before any reps are added, and a failed lookup never blocks a ticket.
+- The dropdown opens on an empty "Select your name…" option — otherwise the first rep alphabetically gets silently credited with every ticket.
+
+**Did — multiple screenshots:**
+- New `screenshot_urls text[]` column on `tickets`, with the existing rows backfilled from `screenshot_url`. An array rather than a `ticket_images` table: a ticket has a handful of images, they are never queried on their own, and an array needs no join, no second set of RLS policies, and no extra insert.
+- Up to **4** screenshots per ticket (`MAX_IMAGES`). Each gets its own Fabric canvas, so every image can be annotated separately.
+- `src/lib/ticketImages.js` — one helper that reads `screenshot_urls`, falling back to the old `screenshot_url`. No component needs to know that history, and the three existing tickets keep their images.
+- Uploads run concurrently (`Promise.all`), so four screenshots don't take four times as long.
+
+**Did — detail view:**
+- `src/components/TicketDetail.jsx` — full description with the rep's line breaks intact, every screenshot at full width, all the metadata, and the status control for admins. Clicking a row or its thumbnail opens it; "← Back to queue" returns.
+- Board rows show a **count badge** on the thumbnail when a ticket has more than one image.
+- The row body is a real `<button>`, so it is keyboard-reachable, styled back down to look like plain text. The status dropdown sits outside it so changing status doesn't also navigate.
+
+**Verified against the live database:**
+- Section 5 ran: "Success. No rows returned".
+- The backfill is correct — all three existing tickets now report exactly 1 image, and `screenshot_urls[1]` matches the old `screenshot_url` on every row.
+- `npm run lint` and `npm run build` clean.
+- Not verified by me: the form and detail view with real data, which needs the login.
+
+**👤 MANUAL — add your reps** (until you do, the name field stays free text):
+```sql
+insert into reps (name) values ('Moses'), ('Dana'), ('Alex');
+```
+
+**Test:**
+1. Submit tab → "Your name" is a dropdown of the reps you added.
+2. Attach 2–3 screenshots at once. Tabs appear (Image 1 / Image 2 …) — draw something different on each, switch between them, and confirm **your marks are still there** when you switch back.
+3. "Remove this image" drops one without disturbing the others.
+4. Submit → Queue → the row shows a thumbnail with a count badge.
+5. Click the row → the detail view opens with the full description and every screenshot, each annotated as you drew it.
+6. As admin, change the status from the detail view → go back → the row reflects it.
+
+**Notes:**
+- **The canvases stay mounted while hidden.** Switching images uses `hidden`, not unmounting — a Fabric canvas that unmounts loses its drawings, so tabbing between screenshots would have quietly erased the rep's work.
+- **Each annotator gets a stable ref, keyed by the File object.** The first version built these inline, which handed the annotator a new object on every render and rebuilt the canvas each time — typing one character in the title field would have wiped every drawing. Caught before it shipped, but it is the kind of bug that looks like nothing in the diff.
+- `screenshot_url` still exists on the table for the old rows. It is no longer written to; the app reads `screenshot_urls` only.
+- Deactivating a rep (`active = false`) removes them from the dropdown but leaves their name on old tickets, which is why it is a flag rather than a delete.
+
+**Next:** deploy to Vercel + the UptimeRobot ping.
+
+
 ## [2026-08-18] — Phase 5a: Compact board, visible priority, admin-only status changes
 **Asked for:** the board was too heavy to manage, priority wasn't visible, and only an admin should be able to change a ticket's status.
 

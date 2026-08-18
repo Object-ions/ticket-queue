@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { createTicket } from '../lib/tickets'
+import { useEffect, useRef, useState } from 'react'
+import { createTicket, fetchReps } from '../lib/tickets'
 import { CATEGORIES, PRIORITIES } from '../lib/constants'
 import ScreenshotPicker from './ScreenshotPicker'
 
@@ -16,10 +16,19 @@ export default function TicketForm() {
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('other')
   const [priority, setPriority] = useState('normal')
-  const [file, setFile] = useState(null)
-  // Filled in by the annotator: an async function that flattens the drawing and
-  // the screenshot into one PNG. Null when no screenshot has been picked.
-  const exportRef = useRef(null)
+  const [files, setFiles] = useState([])
+  const [reps, setReps] = useState([])
+  // File -> { current: exportFunction }. Each annotator fills its own entry in
+  // with a function that flattens that image and its drawings into one PNG.
+  const exportRefs = useRef(new Map())
+
+  useEffect(() => {
+    // A failure here is not worth blocking the form over: the name field falls
+    // back to free text, which is how it worked before the list existed.
+    fetchReps()
+      .then(setReps)
+      .catch(() => setReps([]))
+  }, [])
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -32,10 +41,15 @@ export default function TicketForm() {
     setSubmitting(true)
 
     try {
-      // Upload the flattened PNG (screenshot + drawings) rather than the file
+      // Upload the flattened PNGs (screenshot + drawings) rather than the files
       // the rep chose. Falling back to the raw file means a canvas that failed
       // to build costs the annotations, not the whole ticket.
-      const upload = file && exportRef.current ? await exportRef.current() : file
+      const uploads = await Promise.all(
+        files.map((file) => {
+          const exportImage = exportRefs.current.get(file)?.current
+          return exportImage ? exportImage() : file
+        }),
+      )
 
       const ticketNumber = await createTicket({
         submitterName,
@@ -43,7 +57,7 @@ export default function TicketForm() {
         description,
         category,
         priority,
-        file: upload,
+        files: uploads,
       })
 
       localStorage.setItem(NAME_KEY, submitterName.trim())
@@ -55,7 +69,8 @@ export default function TicketForm() {
       setDescription('')
       setCategory('other')
       setPriority('normal')
-      setFile(null)
+      setFiles([])
+      exportRefs.current.clear()
     } catch (submitError) {
       setError(submitError.message)
     } finally {
@@ -77,14 +92,32 @@ export default function TicketForm() {
 
       <form className="card" onSubmit={handleSubmit}>
         <label htmlFor="submitterName">Your name</label>
-        <input
-          id="submitterName"
-          value={submitterName}
-          onChange={(event) => setSubmitterName(event.target.value)}
-          placeholder="e.g. Jordan"
-          autoComplete="name"
-          required
-        />
+        {reps.length > 0 ? (
+          <select
+            id="submitterName"
+            value={submitterName}
+            onChange={(event) => setSubmitterName(event.target.value)}
+            required
+          >
+            {/* An empty first option forces a deliberate choice: without it the
+                first rep in the list would be silently credited with the ticket. */}
+            <option value="">Select your name…</option>
+            {reps.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            id="submitterName"
+            value={submitterName}
+            onChange={(event) => setSubmitterName(event.target.value)}
+            placeholder="e.g. Jordan"
+            autoComplete="name"
+            required
+          />
+        )}
 
         <label htmlFor="title">Title</label>
         <input
@@ -132,9 +165,9 @@ export default function TicketForm() {
         </select>
 
         <ScreenshotPicker
-          file={file}
-          onChange={setFile}
-          exportRef={exportRef}
+          files={files}
+          onChange={setFiles}
+          exportRefs={exportRefs}
           disabled={submitting}
         />
 

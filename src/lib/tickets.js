@@ -8,6 +8,23 @@ import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from './constants'
  */
 
 /**
+ * The names shown in the "Your name" dropdown, alphabetically.
+ *
+ * Only active reps: someone who has left keeps their name on old tickets but
+ * should not be pickable on new ones.
+ */
+export async function fetchReps() {
+  const { data, error } = await supabase
+    .from('reps')
+    .select('name')
+    .eq('active', true)
+    .order('name')
+
+  if (error) throw new Error(`Could not load the rep list: ${error.message}`)
+  return data.map((rep) => rep.name)
+}
+
+/**
  * Check a file before we try to upload it. Returns an error string, or '' if
  * the file is fine. Doing this in the browser is about giving a fast, clear
  * message — the real limits are enforced by Supabase Storage on the server.
@@ -47,13 +64,16 @@ async function uploadScreenshot(file) {
 }
 
 /**
- * Create a ticket. Uploads the screenshot first (if there is one), then inserts
- * the row carrying the resulting URL.
+ * Create a ticket. Uploads every screenshot first, then inserts the row
+ * carrying the resulting URLs.
  *
  * Order matters: the row must never point at a file that failed to upload. The
- * trade-off is that if the INSERT fails after a successful upload we leave an
- * orphaned file in the bucket. That is the cheaper failure — a stray image
+ * trade-off is that if the INSERT fails after successful uploads we leave
+ * orphaned files in the bucket. That is the cheaper failure — a stray image
  * costs a few KB, a broken image link in the queue costs the admin real time.
+ *
+ * The uploads run together rather than one after another: four screenshots
+ * would otherwise take four times as long for no reason.
  *
  * Returns the new ticket's number (#1, #2, …) for the success message.
  */
@@ -63,9 +83,9 @@ export async function createTicket({
   description,
   category,
   priority,
-  file,
+  files = [],
 }) {
-  const screenshotUrl = file ? await uploadScreenshot(file) : null
+  const screenshotUrls = await Promise.all(files.map((file) => uploadScreenshot(file)))
 
   const { data, error } = await supabase
     .from('tickets')
@@ -75,7 +95,7 @@ export async function createTicket({
       description: description.trim(),
       category,
       priority,
-      screenshot_url: screenshotUrl,
+      screenshot_urls: screenshotUrls,
       // `status` is deliberately not set — the column defaults to 'new'.
     })
     // Without .select() Supabase returns nothing on insert, and we need the

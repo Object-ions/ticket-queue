@@ -36,6 +36,11 @@ export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'i
 // drags in a 40 MB photo gets an instant, clear error instead of a slow upload.
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
 
+// A ticket can carry several screenshots. The cap is about keeping the submit
+// form usable — each image gets its own drawing canvas, and past a handful the
+// page becomes a scrolling chore rather than a quick report.
+export const MAX_IMAGES = 4
+
 /**
  * Turn a stored value ('sms_delivery') into its label ('SMS delivery').
  *

@@ -1,4 +1,5 @@
 import { CATEGORIES, PRIORITIES, STATUSES, labelFor } from '../lib/constants'
+import { ticketImages } from '../lib/ticketImages'
 
 /**
  * One compact row on the board.
@@ -7,7 +8,8 @@ import { CATEGORIES, PRIORITIES, STATUSES, labelFor } from '../lib/constants'
  * description and the full-size screenshot are one click away rather than
  * always expanded.
  */
-export default function TicketCard({ ticket, isAdmin, onStatusChange, busy }) {
+export default function TicketCard({ ticket, isAdmin, onOpen, onStatusChange, busy }) {
+  const images = ticketImages(ticket)
   const filedOn = new Date(ticket.created_at).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -17,7 +19,9 @@ export default function TicketCard({ ticket, isAdmin, onStatusChange, busy }) {
 
   return (
     <li className={`ticket ticket-${ticket.status}`}>
-      <div className="ticket-main">
+      {/* The row body opens the ticket; the controls on the right are outside
+          this button so clicking the status dropdown doesn't also navigate. */}
+      <button type="button" className="ticket-main" onClick={() => onOpen(ticket.id)}>
         <div className="ticket-head">
           <span className="ticket-number">#{ticket.ticket_number}</span>
           <span className={`badge badge-${ticket.priority}`}>
@@ -32,13 +36,19 @@ export default function TicketCard({ ticket, isAdmin, onStatusChange, busy }) {
 
         {/* Clamped to two lines in CSS; the full text is in the detail view. */}
         {ticket.description && <p className="ticket-description">{ticket.description}</p>}
-      </div>
+      </button>
 
       <div className="ticket-side">
-        {ticket.screenshot_url && (
-          <a href={ticket.screenshot_url} target="_blank" rel="noreferrer" title="Open screenshot">
-            <img className="ticket-thumb" src={ticket.screenshot_url} alt="Screenshot" />
-          </a>
+        {images.length > 0 && (
+          <button
+            type="button"
+            className="thumb-button"
+            onClick={() => onOpen(ticket.id)}
+            title={`${images.length} screenshot${images.length > 1 ? 's' : ''}`}
+          >
+            <img className="ticket-thumb" src={images[0]} alt="Screenshot" />
+            {images.length > 1 && <span className="thumb-count">{images.length}</span>}
+          </button>
         )}
 
         {isAdmin ? (
