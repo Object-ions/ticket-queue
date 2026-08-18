@@ -15,6 +15,40 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-17] — Phase 2: Shared team login
+**Did:**
+- `src/lib/useSession.js` — a hook that reads the stored session on load and subscribes to auth changes, so signing in/out re-renders the app automatically and a page refresh keeps you signed in.
+- `src/components/Login.jsx` — email + password form calling `supabase.auth.signInWithPassword`.
+- `src/components/Header.jsx` — top bar showing the team account email plus a Sign out button.
+- `src/App.jsx` — the gate: no env vars → Phase 1 setup check; still loading → "Loading…"; no session → Login; session → the app.
+- Login/header/button/input styles appended to `src/index.css`.
+
+**Verified against the live project:**
+- `tickets` table returns `[]` to a logged-out request → Phase 1 RLS confirmed working.
+- Storage bucket `ticket-screenshots` exists and serves public reads.
+- Auth endpoint responds correctly (`invalid_credentials` for bad credentials).
+- `npm run build` and `npm run lint` both clean.
+
+**Test:**
+1. Do the 👤 MANUAL steps below.
+2. `npm run dev` → you should see the login form, not the app.
+3. Sign in with the shared credentials → header + "Signed in" panel.
+4. Refresh the page → still signed in (session persists in localStorage).
+5. Click Sign out → back to the login form.
+
+**👤 MANUAL — required:**
+- **Create the shared user:** Supabase → Authentication → Users → Add user → *Create new user*. Use a team address (e.g. `team@yourdomain.com`) and a strong password. Tick **Auto Confirm User**, otherwise the account cannot log in until the email is confirmed.
+- **🔴 Turn OFF public signups:** Authentication → Sign In / Providers → Email → disable **Allow new users to sign up**. I checked the live project and this is currently **enabled**, which is a real hole — see Notes.
+
+**Notes:**
+- **Security finding:** the project currently reports `disable_signup: false`. Because the anon key is public in the browser bundle, anyone who finds it could register their own account, become `authenticated`, and our RLS policies (`to authenticated using (true)`) would then grant them full read/write on every ticket. Disabling signups closes it: accounts can then only be created by an admin in the dashboard.
+- The auth gate in `App.jsx` is a convenience, not a security boundary — the browser's JS can be edited. RLS at the database is what actually protects data.
+- `loading` state exists to stop the login form flashing on screen for already-signed-in reps during the session check.
+- Supabase's "Invalid login credentials" message is intentionally vague so it cannot be used to discover which emails exist. Passed through as-is.
+
+**Next:** Phase 3 — the ticket submit form (name, title, description, category, priority, plain image upload).
+
+
 ## [2026-08-15] — Phase 1: Supabase backend
 **Did:**
 - Added `supabase/schema.sql` — the `tickets` table, RLS policies for select/insert/update, and the Storage policies for the `ticket-screenshots` bucket. Committed so the database is reproducible instead of living only in dashboard clicks.
