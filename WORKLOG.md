@@ -42,6 +42,9 @@ Entry format:
 - `status` is never set by the form — the column defaults to `'new'`.
 - Not verified end-to-end by me: submitting requires the shared login password, which I do not have. Lint and build are clean, and the Phase 1/2 checks (RLS, bucket, storage policies) already passed against the live project.
 
+**Security fix to Phase 1 (found during this test):** Supabase's advisor flagged *"Clients can list all files in this bucket"* — the `anyone can read screenshots` SELECT policy I added on `storage.objects` in Phase 1. A public bucket already serves every file over its public URL, so the policy bought us nothing the app uses, but it did let anyone with the anon key **list** the bucket and walk every screenshot ever uploaded. Filenames are random UUIDs specifically so they can't be guessed; a listing policy undoes that. Removed from `supabase/schema.sql`. The setup check probes a known public URL rather than listing, so nothing in the app breaks.
+👤 MANUAL: in the Storage banner, click **Remove policy** (or run `drop policy if exists "anyone can read screenshots" on storage.objects;` in the SQL Editor). Then re-open a `screenshot_url` — it must still load.
+
 **Still open from Phase 2 (👤 MANUAL):** public signups appear to still be enabled. Authentication → Sign In / Providers → Email → turn OFF **Allow new users to sign up**. Until then anyone holding the public anon key can create an account and read/write every ticket.
 
 **Next:** Phase 4 — Fabric.js annotation layer over the screenshot, flattened to a PNG on submit.

@@ -108,9 +108,16 @@ create policy "authenticated can update screenshots"
   to authenticated
   using (bucket_id = 'ticket-screenshots');
 
--- Read access. A public bucket already serves files over a public URL, but
--- this also allows listing the bucket's contents from the app.
+-- Read access: deliberately NOT granted here.
+--
+-- An earlier version of this file created a broad SELECT policy on
+-- storage.objects so the app could list the bucket. Supabase's own advisor
+-- flagged it, correctly: a public bucket already serves every file over its
+-- public URL, so the policy added nothing we use — but it did let anyone
+-- holding the anon key LIST the bucket and walk every screenshot ever
+-- uploaded. The filenames are random UUIDs precisely so they can't be guessed;
+-- a listing policy hands out the whole list and undoes that.
+--
+-- The app never lists the bucket. It stores each file's public URL on the
+-- ticket row and reads it from there.
 drop policy if exists "anyone can read screenshots" on storage.objects;
-create policy "anyone can read screenshots"
-  on storage.objects for select
-  using (bucket_id = 'ticket-screenshots');
