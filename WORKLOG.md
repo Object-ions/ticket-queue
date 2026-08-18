@@ -15,6 +15,22 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-18] — Phase 4a: Fix — screenshot was cropped and misaligned on the canvas
+**Reported:** drawing worked and the ticket uploaded, but the screenshot and the canvas were different shapes and only part of the image showed.
+
+**Cause:** a Fabric image assigned straight to `canvas.backgroundImage` is positioned about its **centre**, not its top-left corner. Its `left`/`top` are 0, so the image ended up centred on the canvas's (0, 0) corner — meaning only its bottom-right quarter fell inside the canvas. That is why the picture looked cropped, sat at the wrong scale against the drawings, and exported with empty space around it.
+
+**Fix:** `placeBackground()` in `src/lib/annotator.js` now scales the image and then pins it explicitly: `originX: 'left'`, `originY: 'top'`, `left: 0`, `top: 0`. `useAnnotationCanvas` calls it instead of setting the background itself.
+
+**Verified in the browser, on four screenshot shapes** — 2940×1912 (retina), 1920×1080, 400×900 (tall), 300×200 (smaller than the canvas). For each: a marker was painted into all four corners of the source image, and all four came back in the **correct corners** of the exported PNG, at full source resolution, with the annotations drawn over them. Before the fix the same test returned the image's centre where its top-left corner should be.
+
+**Test:** attach a wide screenshot → the canvas should be the same shape as the picture, with no cropping and no blank margin. Draw a box around something near an edge, submit, and open `screenshot_url` — the box should sit exactly where you drew it.
+
+**Note — why Phase 4's own testing missed this:** I checked that the annotations rendered and that the export came back at full resolution, and both were true. I never checked that the *background image* filled the frame, so a bug that only affected the background passed. The corner-marker check added here is the thing that actually catches it.
+
+**Next:** Phase 5 — the queue board (unchanged).
+
+
 ## [2026-08-18] — Phase 4: Image annotation (Fabric.js)
 **Did:**
 - Installed `fabric` v7.4.0.

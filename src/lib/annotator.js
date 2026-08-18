@@ -27,6 +27,23 @@ export function fitToWidth(naturalWidth, naturalHeight, maxWidth) {
   }
 }
 
+/**
+ * Put the screenshot behind the drawings, scaled to fill the canvas exactly.
+ *
+ * The explicit origin and position are the whole point of this function. A
+ * Fabric image dropped straight into `canvas.backgroundImage` is positioned
+ * about its centre, so it lands centred on the canvas's (0, 0) corner and only
+ * its bottom-right quarter is visible — which is exactly the "image is cropped
+ * and doesn't line up with the canvas" bug this fixes. Pinning origin to the
+ * top-left and position to (0, 0) makes the image's corner the canvas's corner.
+ */
+export function placeBackground(canvas, image, width) {
+  image.scaleToWidth(width)
+  image.set({ originX: 'left', originY: 'top', left: 0, top: 0 })
+  canvas.backgroundImage = image
+  canvas.renderAll()
+}
+
 /** An empty rectangle, drawn by dragging from one corner to the other. */
 export function makeRect(x, y) {
   return new Rect({

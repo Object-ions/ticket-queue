@@ -7,6 +7,7 @@ import {
   fitToWidth,
   makeArrow,
   makeRect,
+  placeBackground,
   resizeRect,
 } from './annotator'
 
@@ -61,9 +62,7 @@ export function useAnnotationCanvas(file, exportRef) {
       })
       fabricRef.current = canvas
 
-      image.scaleToWidth(width)
-      canvas.backgroundImage = image
-      canvas.renderAll()
+      placeBackground(canvas, image, width)
 
       // Fabric v6+ no longer creates a brush for you.
       const brush = new PencilBrush(canvas)
