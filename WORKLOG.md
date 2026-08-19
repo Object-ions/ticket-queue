@@ -15,6 +15,49 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-19] — Deployed: live at https://tickets.jo11pipeline.com
+**The app is in production.** Netlify project `jo-11-project-queue`, custom subdomain on the owner's Namecheap domain, valid TLS, real data.
+
+**Did — username login:**
+- `src/lib/auth.js` — `usernameToEmail()`. Supabase's password auth has no concept of a username; the identifier is always an email. Reps now type `all` and the `@morflorida.com` is appended. Anything containing an `@` passes through untouched, so the admin's Gmail address still works.
+- `src/components/Login.jsx` — the field is "Username" and is `type="text"`, deliberately: what gets typed usually isn't a valid email and the browser would refuse to submit it.
+
+**Did — value constraints (schema section 6):**
+- CHECK constraints on `category`, `priority` and `status`, plus non-blank `submitter_name` and `title`. Until now only the UI restricted these; the API would have accepted anything.
+- **Verified by trying to break it**: inserting `status = 'banana'` inside a transaction failed with `violates check constraint "tickets_status_check"`, then rolled back. A constraint nobody tested is a constraint nobody knows works.
+
+**Did — DNS and hosting:**
+- Namecheap: `CNAME tickets → jo-11-project-queue.netlify.app` and the TXT record Netlify required to prove ownership of a domain it doesn't manage. The existing `app → whitelabel.ludicrous.cloud` CNAME and the SPF record were left alone.
+- Netlify: custom domain added and set primary, Let's Encrypt certificate issued (`CN=tickets.jo11pipeline.com`, strict HTTPS returns 200).
+- **The certificate failed twice before succeeding, and it was worth understanding why rather than clicking again**: `dig SOA` shows a negative-cache TTL of ~1 hour. Netlify's first attempt fired seconds before the CNAME existed, so Let's Encrypt's resolvers cached "no such name" and kept answering that. Nothing was misconfigured; every retry inside that window was guaranteed to fail. It provisioned itself once the cache expired.
+- This project is **not** connected to GitHub for continuous deploy — it deploys from the CLI (`netlify deploy --prod --build`). Pushing to GitHub does not publish. Worth knowing before wondering why a change isn't live.
+
+**Did — keeping Supabase awake (`.github/workflows/keep-supabase-awake.yml`):**
+- A scheduled GitHub Action every 3 days, instead of UptimeRobot.
+- **UptimeRobot pointed at the site would not have worked.** A free Supabase project pauses after 7 days without *database* activity, and this site is static files on Netlify — the Supabase call happens in the visitor's browser. A monitor fetching the page never touches the database. This job queries the REST API directly, which is what actually resets the clock.
+- Runs unauthenticated, so RLS applies and it reads nothing back. An empty array still counts as activity.
+- Credentials are GitHub Actions secrets (`SUPABASE_URL`, `SUPABASE_ANON_KEY`), not committed — the repo is public.
+- **Verified**: triggered a run by hand, both steps green — Supabase HTTP 200, site HTTP 200.
+- Caveat: GitHub disables scheduled workflows after 60 days with no repo activity. If this project goes quiet for two months, re-enable it in the Actions tab.
+
+**Accounts as they now stand:**
+
+| | `all@morflorida.com` | `moshikolee@gmail.com` |
+|---|---|---|
+| Who | the reps, shared | the admin |
+| Read every ticket | ✅ | ✅ |
+| Submit | ✅ | ✅ |
+| Change status | ❌ | ✅ |
+
+`reps` is a list of **names only** — no passwords, no accounts, no permissions. It exists purely to populate the "Your name" dropdown, because a shared login means the database cannot tell who filed what. Attribution is honour-system: nothing stops someone picking a colleague's name. Fine for an internal tool; do not treat `submitter_name` as proof of anything.
+
+**Still open (both need the owner's input, neither blocks use):**
+1. **`reps` is still empty** — so the name field remains free text. One INSERT away: `insert into reps (name) values ('Moses'), ('Dana');`
+2. **Ticket deletion** — still nobody can delete, admins included. Undecided. If it is ever added, note that storage has no delete policy either, so images would be orphaned.
+
+**Next:** nothing outstanding. The app is live and in use.
+
+
 ## [2026-08-18] — Pre-deploy: permissions audit + Netlify config
 **Permissions, as they actually stand** (checked against `pg_policies`, not from memory):
 
