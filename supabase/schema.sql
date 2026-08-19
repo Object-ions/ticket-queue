@@ -267,3 +267,34 @@ alter table tickets add constraint tickets_title_check
 -- Note: adding a value to any of these lists means updating BOTH this file and
 -- the matching list in src/lib/constants.js. That duplication is the cost of
 -- having the database enforce it rather than trusting the browser.
+
+
+-- ============================================================
+-- 7. Admin delete, and the rep list
+-- ============================================================
+-- Until now there was no DELETE policy at all, so a ticket could only be
+-- removed from the Supabase dashboard. Admins can now delete from the app.
+--
+-- Reps still cannot: `is_admin()` is the same function guarding updates, so
+-- there is one definition of "admin" and the two policies cannot drift apart.
+drop policy if exists "admins can delete tickets" on tickets;
+create policy "admins can delete tickets"
+  on tickets for delete
+  to authenticated
+  using (is_admin());
+
+-- Deleting the row is only half the job. Without this the screenshots would
+-- stay in the bucket forever — invisible, unreferenced, and still counting
+-- against storage. Admins only, matching the ticket policy.
+drop policy if exists "admins can delete screenshots" on storage.objects;
+create policy "admins can delete screenshots"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'ticket-screenshots' and is_admin());
+
+
+-- The names in the "Your name" dropdown. Names only — these are not accounts
+-- and carry no permissions; see section 5.
+insert into reps (name) values
+  ('Moses'), ('Jo'), ('Lior'), ('Sol'), ('Bernardo'), ('Fatima')
+on conflict (name) do nothing;

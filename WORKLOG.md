@@ -15,6 +15,29 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-19] — Admin delete + the rep list
+**Did — admins can now delete tickets (schema section 7):**
+- A DELETE policy on `tickets` guarded by `is_admin()` — the same function that guards updates, so there is one definition of "admin" and the two policies cannot drift apart. Reps still cannot delete.
+- A matching DELETE policy on `storage.objects` for the screenshot bucket. **Deleting the row is only half the job**: without this the images would stay in the bucket forever — invisible, unreferenced, and still counting against storage.
+- `deleteTicket()` in `src/lib/tickets.js` removes the row **first**, then the files. If the row is gone but a file lingers, the cost is a few unreferenced KB nobody sees; if the files went first and the row delete then failed, the queue would show a ticket with broken images. A failed file cleanup is deliberately not thrown either — the ticket is already gone, so reporting failure would be misleading.
+- `storagePathFromUrl()` in `src/lib/ticketImages.js` — storage deletes take an object path, but the row only stores the full public URL. Returns null for anything outside our bucket, so a hand-edited URL is skipped rather than producing a nonsense delete.
+- `TicketDetail` gets a two-step delete for admins: "Delete ticket" → a red warning naming the ticket number → "Delete permanently". **Not** a browser `confirm()` dialog — those can't be styled and block the page. The control sits at the far end of the action row, away from the status dropdown, so the destructive button is never what your cursor lands on by accident.
+
+**Did — the rep list:**
+- Inserted the six names: Moses, Jo, Lior, Sol, Bernardo, Fatima. The "Your name" field is now a dropdown; the free-text fallback stays in the code for the case where the list is empty.
+
+**Verified against the live database:** one query returned all 8 expected rows — `admins can delete tickets [DELETE]`, `admins can delete screenshots [DELETE]`, and the six rep names. Lint and build clean, deployed to production.
+
+**Test:**
+1. Sign in as admin → open any ticket → **Delete ticket** → the warning names the ticket → **Delete permanently**. It disappears from the queue and its images are gone from the bucket.
+2. Sign in as `all@…` → open a ticket → **no delete control at all**. If you forced one, RLS would reject it.
+3. Submit tab → "Your name" is a dropdown of the six names.
+
+**Note:** deletion is permanent and there is no undo, by design — no soft-delete column, no trash. If a ticket is deleted by mistake it is gone, screenshots included.
+
+**Next:** nothing outstanding.
+
+
 ## [2026-08-19] — Deployed: live at https://tickets.jo11pipeline.com
 **The app is in production.** Netlify project `jo-11-project-queue`, custom subdomain on the owner's Namecheap domain, valid TLS, real data.
 

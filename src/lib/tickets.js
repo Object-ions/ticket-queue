@@ -1,4 +1,5 @@
 import { supabase, SCREENSHOT_BUCKET } from './supabase'
+import { storagePathFromUrl, ticketImages } from './ticketImages'
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from './constants'
 
 /**
@@ -129,4 +130,26 @@ export async function fetchTickets() {
 export async function updateTicketStatus(id, status) {
   const { error } = await supabase.from('tickets').update({ status }).eq('id', id)
   if (error) throw new Error(`Could not update the ticket: ${error.message}`)
+}
+
+/**
+ * Delete a ticket and its screenshots. Admins only — enforced by RLS, not here.
+ *
+ * The row goes first, on purpose. If the row is gone but a file lingers, the
+ * cost is a few unreferenced KB nobody sees. If the files were removed first
+ * and the row delete then failed, the queue would show a ticket with broken
+ * images — visible, confusing, and worse.
+ *
+ * For the same reason a failed file cleanup is not thrown: the ticket is
+ * already gone and the admin's action succeeded. Reporting a failure would be
+ * misleading.
+ */
+export async function deleteTicket(ticket) {
+  const { error } = await supabase.from('tickets').delete().eq('id', ticket.id)
+  if (error) throw new Error(`Could not delete the ticket: ${error.message}`)
+
+  const paths = ticketImages(ticket).map(storagePathFromUrl).filter(Boolean)
+  if (paths.length > 0) {
+    await supabase.storage.from(SCREENSHOT_BUCKET).remove(paths)
+  }
 }

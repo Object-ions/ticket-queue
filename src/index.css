@@ -646,3 +646,31 @@ input[type='file'] {
 .detail-actions select {
   margin-bottom: 0;
 }
+
+/* --- Admin delete (Phase 7) --- */
+
+.detail-delete {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  /* Pushed to the far end, away from the status control, so the destructive
+     action is never the thing your cursor lands on by accident. */
+  margin-left: auto;
+}
+
+.delete-warning {
+  font-size: 0.8125rem;
+  color: #b91c1c;
+}
+
+.tool-danger {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+}
+
+.tool-danger:hover:not(:disabled) {
+  background: #991b1b;
+  border-color: #991b1b;
+}

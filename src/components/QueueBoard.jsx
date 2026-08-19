@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchTickets, updateTicketStatus } from '../lib/tickets'
+import { deleteTicket, fetchTickets, updateTicketStatus } from '../lib/tickets'
 import { STATUSES } from '../lib/constants'
 import { useIsAdmin } from '../lib/useIsAdmin'
 import TicketCard from './TicketCard'
@@ -33,6 +33,23 @@ export default function QueueBoard({ email }) {
   useEffect(() => {
     load()
   }, [])
+
+  async function handleDelete(ticket) {
+    setSavingId(ticket.id)
+    setError('')
+
+    try {
+      await deleteTicket(ticket)
+      // Drop it from the list and go back — the detail view it was open in no
+      // longer has a ticket to show.
+      setTickets((current) => current.filter((row) => row.id !== ticket.id))
+      setOpenId(null)
+    } catch (deleteError) {
+      setError(deleteError.message)
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   async function handleStatusChange(id, status) {
     setSavingId(id)
@@ -70,6 +87,7 @@ export default function QueueBoard({ email }) {
           ticket={openTicket}
           isAdmin={isAdmin}
           onStatusChange={handleStatusChange}
+          onDelete={handleDelete}
           onBack={() => setOpenId(null)}
           busy={savingId === openTicket.id}
         />

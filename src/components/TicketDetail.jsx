@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { CATEGORIES, PRIORITIES, STATUSES, labelFor } from '../lib/constants'
 import { ticketImages } from '../lib/ticketImages'
 
@@ -7,8 +8,18 @@ import { ticketImages } from '../lib/ticketImages'
  *
  * The board deliberately truncates; this is where a ticket is actually read.
  */
-export default function TicketDetail({ ticket, isAdmin, onStatusChange, onBack, busy }) {
+export default function TicketDetail({
+  ticket,
+  isAdmin,
+  onStatusChange,
+  onDelete,
+  onBack,
+  busy,
+}) {
   const images = ticketImages(ticket)
+  // Two-step delete instead of a browser confirm() dialog: it can be styled,
+  // it can't block the page, and the second click is a deliberate one.
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const filedOn = new Date(ticket.created_at).toLocaleString(undefined, {
     dateStyle: 'full',
     timeStyle: 'short',
@@ -81,6 +92,40 @@ export default function TicketDetail({ ticket, isAdmin, onStatusChange, onBack, 
               </option>
             ))}
           </select>
+
+          <div className="detail-delete">
+            {confirmingDelete ? (
+              <>
+                <span className="delete-warning">
+                  Delete #{ticket.ticket_number} and its screenshots? This cannot be undone.
+                </span>
+                <button
+                  type="button"
+                  className="tool tool-danger"
+                  onClick={() => onDelete(ticket)}
+                  disabled={busy}
+                >
+                  {busy ? 'Deleting…' : 'Delete permanently'}
+                </button>
+                <button
+                  type="button"
+                  className="tool"
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={busy}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="tool"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                Delete ticket
+              </button>
+            )}
+          </div>
         </div>
       )}
     </article>
