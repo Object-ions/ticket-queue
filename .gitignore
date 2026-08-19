@@ -45,3 +45,6 @@ Thumbs.db
 coverage/
 .cache/
 .eslintcache
+
+# Local Netlify folder
+.netlify

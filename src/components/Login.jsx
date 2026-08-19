@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { LOGIN_DOMAIN, usernameToEmail } from '../lib/auth'
 
 /**
  * The shared team login.
@@ -11,7 +12,7 @@ import { supabase } from '../lib/supabase'
  * asks for "Your name".
  */
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -23,7 +24,9 @@ export default function Login() {
     setSubmitting(true)
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      // Supabase authenticates on an email, so a bare username is expanded to
+      // one here. Typing the full address still works.
+      email: usernameToEmail(username),
       password,
     })
 
@@ -46,13 +49,18 @@ export default function Login() {
       <p className="subtitle">Sign in with the shared team login.</p>
 
       <form className="card" onSubmit={handleSubmit}>
-        <label htmlFor="email">Email</label>
+        <label htmlFor="username">Username</label>
         <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          id="username"
+          // Deliberately type="text", not "email": what's typed here usually
+          // isn't a valid email, and the browser would refuse to submit it.
+          type="text"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          placeholder={`e.g. all (for all@${LOGIN_DOMAIN})`}
           autoComplete="username"
+          autoCapitalize="none"
+          spellCheck="false"
           required
         />
 
@@ -73,7 +81,10 @@ export default function Login() {
         </button>
       </form>
 
-      <p className="phase">Ask the admin for the team credentials.</p>
+      <p className="phase">
+        Just your username — the <code>@{LOGIN_DOMAIN}</code> part is added for
+        you. Ask the admin for the team credentials.
+      </p>
     </main>
   )
 }

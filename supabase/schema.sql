@@ -231,3 +231,39 @@ update tickets
 
 -- `screenshot_url` is kept for those old rows but is no longer written to.
 -- The app reads `screenshot_urls` only.
+
+
+-- ============================================================
+-- 6. Value constraints (added before deployment)
+-- ============================================================
+-- Until now, only the UI restricted these columns — the database would happily
+-- accept status = 'banana' from anything that spoke to the API directly. The
+-- dropdowns are a convenience, not a rule; these are the rule.
+--
+-- Written as drop-then-add so this file stays re-runnable.
+
+alter table tickets drop constraint if exists tickets_category_check;
+alter table tickets add constraint tickets_category_check
+  check (category in ('sms_delivery', 'ai_agent', 'pipeline', 'data', 'other'));
+
+alter table tickets drop constraint if exists tickets_priority_check;
+alter table tickets add constraint tickets_priority_check
+  check (priority in ('normal', 'urgent'));
+
+alter table tickets drop constraint if exists tickets_status_check;
+alter table tickets add constraint tickets_status_check
+  check (status in ('new', 'in_progress', 'resolved'));
+
+-- A ticket with a blank name is unattributable, which defeats the point of
+-- asking. Same for a blank title on a queue the admin has to scan.
+alter table tickets drop constraint if exists tickets_submitter_name_check;
+alter table tickets add constraint tickets_submitter_name_check
+  check (length(trim(submitter_name)) > 0);
+
+alter table tickets drop constraint if exists tickets_title_check;
+alter table tickets add constraint tickets_title_check
+  check (length(trim(title)) > 0);
+
+-- Note: adding a value to any of these lists means updating BOTH this file and
+-- the matching list in src/lib/constants.js. That duplication is the cost of
+-- having the database enforce it rather than trusting the browser.
