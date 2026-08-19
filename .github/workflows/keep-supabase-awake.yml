@@ -1,0 +1,42 @@
+# Keeps the free Supabase project from pausing.
+#
+# A free project pauses after 7 days without database activity. The important
+# detail: pinging the website does NOT count. The site is static files on
+# Netlify — the Supabase call happens in the visitor's browser, so a monitor
+# fetching the page never touches the database. This job queries the REST API
+# directly, which is what actually resets the clock.
+#
+# Runs unauthenticated, so RLS applies and it reads nothing: the response is an
+# empty array. That is fine — the query still counts as activity.
+
+name: Keep Supabase awake
+
+on:
+  schedule:
+    # 06:00 UTC every third day — comfortably inside the 7-day window even if
+    # GitHub delays a run, which it does when the runners are busy.
+    - cron: '0 6 */3 * *'
+  # Lets you run it by hand from the Actions tab to check it works.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query the tickets table
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/tickets?select=id&limit=1")
+          echo "Supabase responded with HTTP $code"
+          # 200 with an empty array is the expected result for a logged-out
+          # request. Anything else means the project is paused, the key rotated,
+          # or the URL is wrong — all worth failing loudly for.
+          test "$code" = "200"
+
+      - name: Check the site is serving
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://tickets.jo11pipeline.com/)
+          echo "Site responded with HTTP $code"
+          test "$code" = "200"
