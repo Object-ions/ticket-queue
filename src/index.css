@@ -674,3 +674,20 @@ input[type='file'] {
   background: #991b1b;
   border-color: #991b1b;
 }
+
+/* --- Archived tickets --- */
+
+.ticket-archived {
+  border-left-color: var(--text-muted);
+}
+
+/* Archived work is out of the way but still readable if you go looking. */
+.ticket-archived .ticket-title,
+.ticket-archived .ticket-number {
+  color: var(--text-muted);
+}
+
+.badge-archived {
+  background: var(--bg);
+  color: var(--text-muted);
+}

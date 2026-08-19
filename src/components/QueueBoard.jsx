@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react'
 import { deleteTicket, fetchTickets, updateTicketStatus } from '../lib/tickets'
-import { STATUSES } from '../lib/constants'
+import { ARCHIVED, STATUSES, isActive } from '../lib/constants'
 import { useIsAdmin } from '../lib/useIsAdmin'
 import TicketCard from './TicketCard'
 import TicketDetail from './TicketDetail'
 
-// 'all' is a UI-only value; it is never stored on a ticket.
+// 'all' is a UI-only value; it is never stored on a ticket. Note that "All"
+// means all *active* tickets — archived ones are deliberately out of the way,
+// which is the whole point of archiving.
 const FILTERS = [{ value: 'all', label: 'All' }, ...STATUSES]
+
+function matchesFilter(ticket, filter) {
+  if (filter === 'all') return isActive(ticket)
+  return ticket.status === filter
+}
 
 export default function QueueBoard({ email }) {
   const [tickets, setTickets] = useState([])
@@ -73,8 +80,7 @@ export default function QueueBoard({ email }) {
     }
   }
 
-  const visible =
-    filter === 'all' ? tickets : tickets.filter((ticket) => ticket.status === filter)
+  const visible = tickets.filter((ticket) => matchesFilter(ticket, filter))
 
   // Looked up rather than stored, so a status change updates the open ticket too.
   const openTicket = tickets.find((ticket) => ticket.id === openId)
@@ -109,10 +115,7 @@ export default function QueueBoard({ email }) {
 
       <div className="toolbar-group filters">
         {FILTERS.map((option) => {
-          const count =
-            option.value === 'all'
-              ? tickets.length
-              : tickets.filter((ticket) => ticket.status === option.value).length
+          const count = tickets.filter((ticket) => matchesFilter(ticket, option.value)).length
           return (
             <button
               key={option.value}
@@ -133,7 +136,11 @@ export default function QueueBoard({ email }) {
         <p className="subtitle">Loading tickets…</p>
       ) : visible.length === 0 ? (
         <p className="subtitle">
-          {tickets.length === 0 ? 'No tickets yet.' : 'No tickets with that status.'}
+          {tickets.length === 0
+            ? 'No tickets yet.'
+            : filter === ARCHIVED
+              ? 'Nothing archived.'
+              : 'No tickets with that status.'}
         </p>
       ) : (
         <ul className="ticket-list">

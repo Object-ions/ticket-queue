@@ -21,7 +21,18 @@ export const STATUSES = [
   { value: 'new', label: 'New' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'resolved', label: 'Resolved' },
+  { value: 'archived', label: 'Archived' },
 ]
+
+// Archiving is the reversible way to get a ticket off the board: it is just
+// another status, so anything archived by mistake is one dropdown away from
+// coming back. Deleting is still available to admins and is permanent.
+export const ARCHIVED = 'archived'
+
+/** Everything that should show on the working queue — archived tickets do not. */
+export function isActive(ticket) {
+  return ticket.status !== ARCHIVED
+}
 
 export const PRIORITIES = [
   { value: 'normal', label: 'Normal' },

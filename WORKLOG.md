@@ -15,6 +15,25 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-19] — Archiving
+**Why:** deleting is permanent with no undo, which is a lot of finality for "this one is finished with". Archiving is the reversible version.
+
+**Did:**
+- `archived` added as a fourth status (schema section 8 widens the CHECK constraint). It is an ordinary status, so a ticket archived by mistake comes back with one dropdown change — that is the whole point.
+- **"All" now means all *active* tickets.** Archived ones drop off the working queue and live under their own filter, which is what makes archiving useful; leaving them in "All" would just be a label change. `matchesFilter()` in `QueueBoard` is the single place that decides this, and the filter counts run through it too, so the numbers on the buttons cannot disagree with the list below them.
+- Archived rows render grey — visibly out of the way but still readable.
+- **Delete is kept**, unchanged: still admins-only, still permanent, still removes the screenshots. Archive is the everyday action; delete is for genuine mistakes.
+
+**Verified:** section 8 ran clean against the live database, lint and build clean, deployed to production.
+
+**Test:**
+1. Admin → open a ticket → set status to **Archived** → back to the queue → it is gone from "All", and the **Archived (1)** filter has it.
+2. Open it from there, set it back to **New** → it returns to the working queue. Nothing was lost.
+3. Reps see archived tickets under the same filter but, as with every status, cannot change them.
+
+**Next:** nothing outstanding.
+
+
 ## [2026-08-19] — Admin delete + the rep list
 **Did — admins can now delete tickets (schema section 7):**
 - A DELETE policy on `tickets` guarded by `is_admin()` — the same function that guards updates, so there is one definition of "admin" and the two policies cannot drift apart. Reps still cannot delete.

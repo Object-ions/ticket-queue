@@ -298,3 +298,18 @@ create policy "admins can delete screenshots"
 insert into reps (name) values
   ('Moses'), ('Jo'), ('Lior'), ('Sol'), ('Bernardo'), ('Fatima')
 on conflict (name) do nothing;
+
+
+-- ============================================================
+-- 8. Archiving
+-- ============================================================
+-- Deleting a ticket is permanent and has no undo, which is a lot of finality
+-- for "this one is finished with". Archiving is the reversible version: it is
+-- just another status, so a ticket archived by mistake is one dropdown away
+-- from coming back. Delete stays available to admins for genuine mistakes.
+--
+-- The board treats "All" as all *active* tickets, so archived ones are off the
+-- working queue but still reachable under their own filter.
+alter table tickets drop constraint if exists tickets_status_check;
+alter table tickets add constraint tickets_status_check
+  check (status in ('new', 'in_progress', 'resolved', 'archived'));
