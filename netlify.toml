@@ -1,0 +1,20 @@
+# Netlify build settings. Committing them means the site is configured by the
+# repo rather than by remembering what was typed into a form once.
+
+[build]
+  command = "npm run build"
+  # Vite writes the production bundle here.
+  publish = "dist"
+
+[build.environment]
+  # Pin the Node version. Netlify's default has moved before and silently
+  # broken builds; Vite 8 needs 20 or newer.
+  NODE_VERSION = "22"
+
+# Serve index.html for any path instead of a 404. The app has no router today,
+# so this only matters if someone bookmarks or refreshes a deep link — but that
+# is exactly the case that would otherwise look like the site is broken.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

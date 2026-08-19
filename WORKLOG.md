@@ -15,6 +15,36 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-18] — Pre-deploy: permissions audit + Netlify config
+**Permissions, as they actually stand** (checked against `pg_policies`, not from memory):
+
+| | reps (shared login) | admin |
+|---|---|---|
+| Read tickets | ✅ all | ✅ all |
+| Create tickets | ✅ | ✅ |
+| Change status | ❌ | ✅ |
+| Delete tickets | ❌ | ❌ |
+
+- Reps can **read** every ticket, not only submit — that was the explicit ask ("ok for all users to see all tickets").
+- **Nobody can delete**, admins included. There is no DELETE policy on `tickets`, deliberately, since Phase 1. "Admins have full CRUD" is not accurate today; it is CRU.
+- There is no relation between reps and tickets. `submitter_name` is a stored string, so a rep cannot be tied back to their own tickets or edit them.
+- Storage has no delete policy either, so an image cannot be removed from the app. If ticket deletion is ever added, deleting a row would leave its screenshots behind.
+
+**Hosting changed from Vercel to Netlify** (owner's call). `netlify.toml` now carries the build command, publish directory, Node version pin, and an SPA redirect, so the site is configured by the repo rather than by a form someone filled in once. README documents the deploy.
+
+**Still open before this is usable by the team:**
+1. **No reps added** — `reps` is empty, so the "Your name" field is still free text.
+2. **No shared rep login exists** — only the admin account (`moshikolee@gmail.com`). Reps have nothing to sign in with.
+3. **No CHECK constraints** on `category`, `status` or `priority`. The database would accept `status = 'banana'`; only the UI restricts the values.
+4. **Ticket deletion** — not decided.
+
+**Notes:**
+- `VITE_*` variables are inlined at **build** time. Setting them in Netlify after a deploy does nothing until a new build runs — a genuinely easy hour to lose.
+- The anon key being visible in the deployed bundle is by design. RLS is the boundary. The `service_role` key must never be set in Netlify.
+
+**Next:** deploy to Netlify, then point UptimeRobot at the URL so the free Supabase project doesn't pause after 7 days.
+
+
 ## [2026-08-18] — Phase 6: Rep list, ticket detail view, multiple screenshots
 **Asked for:** a proper rep list instead of free-text names, a ticket "card" showing the whole ticket, and more than one image per ticket.
 

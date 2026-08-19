@@ -11,7 +11,7 @@ Built with **React + Vite** and **Supabase** (Postgres + Auth + Storage). Screen
 - Backend: Supabase (hosted Postgres, Auth, Storage)
 - Auth: shared team login
 - Annotation: Fabric.js
-- Hosting: Vercel (free)
+- Hosting: Netlify (free)
 
 ## Local setup
 1. `git clone <repo-url> && cd <repo>`
@@ -35,3 +35,30 @@ Built with **React + Vite** and **Supabase** (Postgres + Auth + Storage). Screen
 
 ## Status
 See `WORKLOG.md` for current progress.
+
+
+## Deploying to Netlify
+
+The build settings live in `netlify.toml`, so there is nothing to type into the
+Netlify build form — it picks up `npm run build`, the `dist` folder and the Node
+version from there.
+
+The one thing Netlify cannot read from the repo is the environment variables,
+because `.env` is gitignored and must stay that way. Set both in
+**Site configuration → Environment variables** before the first build:
+
+| Key | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | your project URL |
+| `VITE_SUPABASE_ANON_KEY` | your anon (public) key |
+
+Vite inlines `VITE_*` variables at **build** time, not at run time. Adding or
+changing one after a deploy does nothing until you trigger a new build.
+
+Both values end up visible in the browser bundle, which is fine: the anon key is
+designed to be public and Row Level Security is what protects the data. The
+`service_role` key must never be set here.
+
+After the first deploy, point an UptimeRobot monitor at the site URL. A free
+Supabase project pauses after 7 days of inactivity; a periodic request keeps it
+awake.
