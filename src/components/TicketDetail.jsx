@@ -43,6 +43,7 @@ export default function TicketDetail({
         <span className={`badge badge-status badge-${ticket.status}`}>
           {labelFor(STATUSES, ticket.status)}
         </span>
+        {ticket.admin_only && <span className="badge badge-private">Admin only</span>}
       </div>
 
       <dl className="detail-facts">

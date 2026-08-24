@@ -258,6 +258,13 @@ input[type='file'] {
   margin-bottom: 1rem;
 }
 
+/* A note that belongs to the form below it, so it sits closer than .subtitle's
+   default spacing would put it. */
+.form-note {
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
 /* --- Annotation canvas (Phase 4) --- */
 
 .annotator {
@@ -509,6 +516,12 @@ input[type='file'] {
 .badge-admin {
   background: #eef2ff;
   color: #3730a3;
+}
+
+/* An admin-filed ticket, which reps never receive from the database. */
+.badge-private {
+  background: #f5f3ff;
+  color: #6d28d9;
 }
 
 /* The read-only status shown to reps. */

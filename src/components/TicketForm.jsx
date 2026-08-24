@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createTicket, fetchReps } from '../lib/tickets'
 import { CATEGORIES, PRIORITIES } from '../lib/constants'
+import { useIsAdmin } from '../lib/useIsAdmin'
 import ScreenshotPicker from './ScreenshotPicker'
 
 // The login is shared, so the database can't tell reps apart — the name field
@@ -8,7 +9,7 @@ import ScreenshotPicker from './ScreenshotPicker'
 // once on their own machine instead of on every ticket.
 const NAME_KEY = 'ticketQueue.submitterName'
 
-export default function TicketForm() {
+export default function TicketForm({ email }) {
   const [submitterName, setSubmitterName] = useState(
     () => localStorage.getItem(NAME_KEY) || '',
   )
@@ -21,6 +22,10 @@ export default function TicketForm() {
   // File -> { current: exportFunction }. Each annotator fills its own entry in
   // with a function that flattens that image and its drawings into one PNG.
   const exportRefs = useRef(new Map())
+  // Anything an admin files is hidden from reps by the database (schema
+  // section 9). Say so up front — a ticket that silently vanishes from the
+  // team's board is a surprise, and the admin cannot undo it afterwards.
+  const { isAdmin } = useIsAdmin(email)
 
   useEffect(() => {
     // A failure here is not worth blocking the form over: the name field falls
@@ -86,8 +91,19 @@ export default function TicketForm() {
 
       {successNumber !== null && (
         <div className="status status-ok submit-success">
-          Ticket #{successNumber} submitted. The admin can see it in the queue.
+          Ticket #{successNumber} submitted.{' '}
+          {isAdmin
+            ? 'Only admins can see it in the queue.'
+            : 'The admin can see it in the queue.'}
         </div>
+      )}
+
+      {isAdmin && (
+        <p className="subtitle form-note">
+          You are signed in as an admin, so this ticket will be visible to admins
+          only. To file something the whole team can see, submit it from the
+          shared rep login.
+        </p>
       )}
 
       <form className="card" onSubmit={handleSubmit}>

@@ -15,6 +15,30 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-08-23] — Admin-only tickets
+**Why:** the admin needs somewhere to file their own notes and follow-ups without those landing on the reps' board. Reps' tickets stay visible to everyone, as before.
+
+**Did:**
+- `supabase/schema.sql` section 9: new `tickets.admin_only` column, a `tickets_set_admin_only()` BEFORE INSERT/UPDATE trigger, and a rewritten SELECT policy `using (not admin_only or is_admin())`.
+- `src/App.jsx` — passes the signed-in email down to `TicketForm`.
+- `src/components/TicketForm.jsx` — tells an admin, before and after submitting, that their ticket will be admin-only.
+- `src/components/TicketCard.jsx`, `src/components/TicketDetail.jsx` — an "Admin only" badge, so the admin can see at a glance which tickets are off the reps' board.
+- `src/index.css` — `.badge-private`, `.form-note`.
+
+**👤 MANUAL, run once:** paste the new section 9 of `supabase/schema.sql` into the Supabase SQL editor and run it. Existing tickets keep `admin_only = false`, so nothing already on the board disappears.
+
+**Test:**
+1. Sign in with the **admin** account → Submit a ticket. The form warns it will be admin-only; the success message says "Only admins can see it in the queue."
+2. Still as admin, open Queue → the new ticket is there with a purple **Admin only** badge. Tickets filed by reps have no badge.
+3. Sign out, sign in with the **shared rep** login → Queue. The admin's ticket is not in the list and not in any filter count. Rep-filed tickets are all still there.
+4. As a rep, file a ticket → it has no badge and the admin can see it.
+
+**Notes:**
+- The flag is set by the database, never by the browser. A client-writable column would let a rep file a hidden ticket, and — more importantly — no client-side filter could stop a modified client from simply asking for the hidden rows. The rows never leave Postgres.
+- On UPDATE the trigger pins `admin_only` to its old value, so an admin changing a status cannot flip a rep's ticket to hidden as a side effect.
+- The rule is blanket: everything an admin files is hidden. If the admin ever needs to post something the whole team sees, they file it from the shared rep login. A per-ticket "visible to team" checkbox is the change to make if that turns out to be common.
+- Screenshots on an admin-only ticket are still in the public bucket and reachable by anyone holding the URL. Nothing hands the URL out (it only lives on a hidden row, and the bucket can't be listed) but it is not a secret — signed URLs would be the fix if an admin ticket ever carries something genuinely sensitive.
+
 ## [2026-08-19] — Archiving
 **Why:** deleting is permanent with no undo, which is a lot of finality for "this one is finished with". Archiving is the reversible version.
 

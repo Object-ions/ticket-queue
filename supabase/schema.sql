@@ -313,3 +313,55 @@ on conflict (name) do nothing;
 alter table tickets drop constraint if exists tickets_status_check;
 alter table tickets add constraint tickets_status_check
   check (status in ('new', 'in_progress', 'resolved', 'archived'));
+
+
+-- ============================================================
+-- 9. Admin-only tickets
+-- ============================================================
+-- Tickets the admin files themselves are internal notes — a bug they spotted, a
+-- follow-up on a rep's report — and reps should not see them on the board.
+-- Tickets filed by reps stay visible to everybody, as before.
+--
+-- The flag is set by the database, not the browser. A column the client could
+-- write would be worthless in both directions: a rep could file a hidden
+-- ticket, and worse, nothing would stop a modified client from asking for
+-- somebody else's hidden rows — visibility has to be decided by RLS.
+alter table tickets add column if not exists admin_only boolean not null default false;
+
+-- BEFORE INSERT, so the value is computed from the caller's own login token and
+-- whatever the client sent is discarded. On UPDATE it is pinned to the old
+-- value: an admin moving a ticket to "resolved" must not be able to flip a
+-- rep's ticket to hidden (or reveal one of their own) as a side effect.
+create or replace function tickets_set_admin_only()
+  returns trigger
+  language plpgsql
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.admin_only := is_admin();
+  else
+    new.admin_only := old.admin_only;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists tickets_admin_only on tickets;
+create trigger tickets_admin_only
+  before insert or update on tickets
+  for each row execute function tickets_set_admin_only();
+
+-- Replaces the section 2 policy that showed every row to every signed-in user.
+-- A rep's request now never returns an admin-only row at all — the rows are not
+-- filtered out in the app, they never leave the database.
+drop policy if exists "authenticated can read tickets" on tickets;
+create policy "authenticated can read tickets"
+  on tickets for select
+  to authenticated
+  using (not admin_only or is_admin());
+
+-- Note on screenshots: the bucket is public, so an admin-only ticket's images
+-- are still reachable by anyone holding the URL. Nothing hands that URL out —
+-- it only lives on a row reps cannot read, and the bucket cannot be listed
+-- (see section 3) — but it is not a secret. Signed URLs would be the fix if an
+-- admin ticket ever carries something genuinely sensitive.

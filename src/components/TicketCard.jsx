@@ -27,6 +27,10 @@ export default function TicketCard({ ticket, isAdmin, onOpen, onStatusChange, bu
           <span className={`badge badge-${ticket.priority}`}>
             {labelFor(PRIORITIES, ticket.priority)}
           </span>
+          {/* Only an admin ever sees one of these rows, so the badge is not
+              hiding anything — it tells them this ticket is off the reps'
+              board, which is otherwise invisible from here. */}
+          {ticket.admin_only && <span className="badge badge-private">Admin only</span>}
           <h3 className="ticket-title">{ticket.title}</h3>
         </div>
 

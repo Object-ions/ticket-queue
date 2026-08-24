@@ -66,7 +66,11 @@ export default function App() {
         {/* Swapping views unmounts the other one. That is deliberate for the
             board: coming back to it remounts and refetches, so a ticket you
             just submitted is there without a manual refresh. */}
-        {view === 'submit' ? <TicketForm /> : <QueueBoard email={session.user.email} />}
+        {view === 'submit' ? (
+          <TicketForm email={session.user.email} />
+        ) : (
+          <QueueBoard email={session.user.email} />
+        )}
       </main>
     </>
   )
