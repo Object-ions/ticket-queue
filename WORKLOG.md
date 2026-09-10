@@ -15,6 +15,30 @@ Entry format:
 
 <!-- New entries above this line -->
 
+## [2026-09-10] — Supabase project rebuilt after outage; login domain changed to joemarketing11.com
+**Why:** the team went to start using the app and found the database unreachable — REST calls returned 404 "table not in schema cache", storage timed out, and the dashboard was stuck on "Coming up…". Root cause: Supabase's own "Unresponsive Projects" incident, affecting Nano-tier projects, still open at the time. Supabase's Restart button refused with "Unable to restart project as project is not active", so this wasn't fixable from our side — only a rebuild or waiting on their fix would work. Separately, the GitHub Actions keep-awake job (`.github/workflows/keep-supabase-awake.yml`) had been silently failing since 2026-08-31, so nobody had noticed the project was already at risk.
+
+**Did:**
+- Created a new Supabase project, **Jo-11-tickets** (`opqojzxocbmskfxdpvkm`, East US/North Virginia, Nano), under the same org.
+- Ran `supabase/schema.sql` against it in full — `tickets`, `admins`, `reps` tables, every RLS policy, all constraints, unchanged from the file in this repo.
+- Recreated the `ticket-screenshots` storage bucket (public), which picked up its 3 upload/update/delete policies automatically from the schema.
+- Inserted `moshikolee@gmail.com` into `admins`.
+- Updated `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in `.env`, in Netlify's site environment variables, and in this repo's GitHub Actions secrets (`SUPABASE_URL`, `SUPABASE_ANON_KEY`), then redeployed. The anon key is the new-style **publishable key** (`sb_publishable_...`), not a legacy JWT — `@supabase/supabase-js@2.112` accepts it the same way.
+- Verified the keep-awake job passes again with a manual `workflow_dispatch` run.
+- **`src/lib/auth.js`** — `LOGIN_DOMAIN` changed from `morflorida.com` to `joemarketing11.com`. This app is meant to serve several clients, each with their own account; a client-specific login domain stopped making sense once a second client was in scope.
+- The old project (`rjwprskyefamwmbsedcy`) was left in place, untouched, in case Supabase's incident fix ever frees its data back up. The free plan allows 2 projects, so this costs nothing.
+
+**Test:**
+1. `curl "$VITE_SUPABASE_URL/rest/v1/tickets?select=id&limit=1"` with the anon key → expect `200` and `[]`.
+2. Fetch the deployed JS bundle from tickets.jo11pipeline.com and grep for `.supabase.co` → should show the new project ref, not the old one. (Netlify's `netlify deploy --prod --build` bakes in whichever `VITE_*` values are set on the Netlify **site**, not the local `.env` — both have to be updated or a redeploy silently keeps serving the old project.)
+3. Sign in at tickets.jo11pipeline.com with a client's `<name>@joemarketing11.com` login.
+
+**Notes:**
+- A new Supabase Auth user created via Authentication → Users → Add user needs **Auto Confirm User** ticked, or the account exists but sign-in fails with "Email not confirmed" — and "Send confirmation email" is a dead end with no email provider configured. Fix from the SQL Editor: `update auth.users set email_confirmed_at = now() where email = '<the account>' and email_confirmed_at is null;`.
+- Pasting a large SQL file into the dashboard's SQL Editor by simulating keystrokes corrupts it — Monaco's auto-closing brackets double up every `)`/`'` typed after an auto-inserted one. Setting the editor's value directly (`window.monaco.editor.getEditors()[0].setValue(...)`, the editor exposes a global `monaco`) avoids this entirely.
+
+**Next:** nothing outstanding. Next client onboarding is a new Supabase Auth user at `<client>@joemarketing11.com` with Auto Confirm ticked.
+
 ## [2026-08-23] — Admin-only tickets
 **Why:** the admin needs somewhere to file their own notes and follow-ups without those landing on the reps' board. Reps' tickets stay visible to everyone, as before.
 
